@@ -47,7 +47,7 @@ var MN=["January","February","March","April","May","June","July","August","Septe
 function load(){var d={items:[],hol:[],rules:[{days:7,color:"#fde047"},{days:3,color:"#fb923c"},{days:1,color:"#ef4444"}],wk:[0]};
  try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);for(var x in o)d[x]=o[x]}}catch(e){}return d}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
- try{var P=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Preferences;if(P)P.set({key:"mycal_widget",value:JSON.stringify(weekData())})}catch(e){}}
+ try{if(window.AndroidWidget)AndroidWidget.save(JSON.stringify(weekData()))}catch(e){}}
 function weekData(){var o=[],DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
  for(var i=0;i<7;i++){var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i),s=k(d),c=colorFor(s),tx=[];
   holOn(s).forEach(function(h){tx.push("🎉"+h.name)});

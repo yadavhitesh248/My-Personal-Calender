@@ -4,6 +4,7 @@ java_dir = base + "/java/com/mycalendar/app"
 for d in (java_dir, base + "/res/layout", base + "/res/xml"):
     os.makedirs(d, exist_ok=True)
 shutil.copy("widget/CalWidget.java", java_dir + "/CalWidget.java")
+shutil.copy("widget/MainActivity.java", java_dir + "/MainActivity.java")
 shutil.copy("widget/widget_week.xml", base + "/res/layout/widget_week.xml")
 shutil.copy("widget/widget_info.xml", base + "/res/xml/widget_info.xml")
 mf = base + "/AndroidManifest.xml"
