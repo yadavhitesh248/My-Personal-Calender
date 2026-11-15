@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>My Calendar</title>
+<title>Lonolf Calender</title>
 <style>
 :root{--bg:#fff;--fg:#1c1c1e;--mut:#6b7280;--line:#e5e7eb;--card:#f4f5f7;--acc:#2563eb;--hol:#dc2626;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--bg:#111827;--fg:#f3f4f6;--mut:#9ca3af;--line:#374151;--card:#1f2937;--acc:#60a5fa;--hol:#f87171;color-scheme:dark}}
@@ -44,15 +44,16 @@ button.p{background:var(--acc);color:#fff;border-color:var(--acc)}
 <script>
 var KEY="mycal_v1",now=new Date(),S=load(),vy=now.getFullYear(),vm=now.getMonth(),sel=k(now);
 var MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
-function load(){var d={items:[],hol:[],rules:[{days:7,color:"#fde047"},{days:3,color:"#fb923c"},{days:1,color:"#ef4444"}],wk:[0]};
+function load(){var d={items:[],hol:[],leaves:[],rules:[{days:7,color:"#7dd3fc"},{days:3,color:"#fb923c"},{days:1,color:"#ef4444"}],wk:[0]};
  try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);for(var x in o)d[x]=o[x]}}catch(e){}return d}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
  try{if(window.AndroidWidget)AndroidWidget.save(JSON.stringify(weekData()))}catch(e){}}
 function weekData(){var o=[],DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
  for(var i=0;i<7;i++){var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i),s=k(d),c=colorFor(s),tx=[];
   holOn(s).forEach(function(h){tx.push("🎉"+h.name)});
-  itemsOn(s).forEach(function(x){if(!x.done)tx.push((x.kind==="reminder"?"⏰":"•")+x.title)});
-  o.push({label:DN[d.getDay()]+" "+d.getDate(),text:tx.join(" · "),color:c&&c!=="od"?c:"#26888888",fg:c&&c!=="od"?txtOn(c):"#FFFFFF"})}
+  var lv=leaveOn(s);if(lv)tx.unshift("\ud83c\udfd6 "+lvName(lv));
+  itemsOn(s).forEach(function(x){if(!isDone(x,s))tx.push((x.kind==="reminder"?"⏰":"•")+x.title)});
+  var cc=c&&c!=="od"?c:(lv?"#fde047":null);o.push({label:DN[d.getDay()]+" "+d.getDate(),text:tx.join(" · "),color:cc||"#26888888",fg:cc?txtOn(cc):"#FFFFFF"})}
  return o}
 function renderWeek(){var w=weekData(),h='<h3>Next 7 days</h3>';
  w.forEach(function(r){h+='<div class="wr" style="background:'+r.color.replace("#26888888","var(--bg)")+';color:'+(r.fg==="#FFFFFF"&&r.color==="#26888888"?"inherit":r.fg)+'"><b>'+esc(r.label)+'</b><span>'+(esc(r.text)||"—")+'</span></div>'});
@@ -64,8 +65,12 @@ function diff(s){var t=new Date(now.getFullYear(),now.getMonth(),now.getDate());
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function holOn(s){return S.hol.filter(function(h){return h.date===s||(h.yearly&&h.date.slice(5)===s.slice(5))})}
-function itemsOn(s){return S.items.filter(function(i){return i.date===s})}
-function colorFor(s){var pend=itemsOn(s).filter(function(i){return !i.done});if(!pend.length)return null;
+function itemsOn(s){return S.items.filter(function(i){return i.date===s||(i.yearly&&s>i.date&&i.date.slice(5)===s.slice(5))})}
+function isDone(x,s){return x.yearly?!!(x.dn&&x.dn[s]):x.done}
+function leaveOn(s){return S.leaves.filter(function(l){return l.date===s})[0]}
+function lvName(l){return l.type==="Other"?"Leave: "+(l.desc||"Other"):l.type+" Leave"}
+function lvShort(l){return{Casual:"CL",Earned:"EL",Medical:"ML"}[l.type]||esc((l.desc||"Leave").slice(0,6))}
+function colorFor(s){var pend=itemsOn(s).filter(function(i){return !isDone(i,s)});if(!pend.length)return null;
  var n=diff(s);if(n<0)return"od";var best=null;
  S.rules.forEach(function(r){if(n<=r.days&&(!best||r.days<best.days))best=r});return best?best.color:null}
 function txtOn(c){var h=c.replace("#",""),r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);return(r*.299+g*.587+b*.114)>150?"#111":"#fff"}
@@ -77,14 +82,17 @@ function render(){
   if(d.getMonth()!==vm)cl.push("o");if(s===k(now))cl.push("t");if(s===sel)cl.push("s");
   var hs=holOn(s),isH=hs.length||S.wk.indexOf(d.getDay())>-1;if(isH)cl.push("h");
   var c=colorFor(s),st="";if(c==="od")cl.push("od");else if(c)st=' style="background:'+c+';color:'+txtOn(c)+'"';
-  var it=itemsOn(s),np=it.filter(function(x){return !x.done}).length;
-  h+='<div class="'+cl.join(" ")+'" data-d="'+s+'"'+st+'><span class="n">'+d.getDate()+'</span>'+(hs.length?'<small>'+esc(hs[0].name)+'</small>':'')+(np?'<span class="d">●'+(np>1?np:'')+'</span>':'')+'</div>'}
+  var lv=leaveOn(s);if(lv&&!st)st=' style="background:#fde047;color:#111"';
+  var it=itemsOn(s),np=it.filter(function(x){return !isDone(x,s)}).length;
+  h+='<div class="'+cl.join(" ")+'" data-d="'+s+'"'+st+'><span class="n">'+d.getDate()+'</span>'+(hs.length?'<small>'+esc(hs[0].name)+'</small>':'')+(lv?'<small>'+lvShort(lv)+'</small>':'')+(np?'<span class="d">●'+(np>1?np:'')+'</span>':'')+'</div>'}
  document.getElementById("g").innerHTML=h;renderWeek();renderDay();save()}
 function renderDay(){var hs=holOn(sel),it=itemsOn(sel),h='<h3>'+pd(sel).toDateString()+'</h3>';
  hs.forEach(function(x){h+='<div class="it"><span>🎉 '+esc(x.name)+(x.yearly?' <i class="mut">(yearly)</i>':'')+'</span><button data-hd="'+x.id+'">✕</button></div>'});
- it.forEach(function(x){h+='<div class="it"><input type="checkbox" data-tg="'+x.id+'"'+(x.done?' checked':'')+'><span class="'+(x.done?'x':'')+'">'+(x.kind==="reminder"?'⏰ ':'')+esc(x.title)+'</span><button data-di="'+x.id+'">✕</button></div>'});
- if(!hs.length&&!it.length)h+='<div class="mut">Nothing on this day.</div>';
- h+='<div class="r"><input type="text" id="nt" placeholder="New task / reminder"><select id="nk"><option value="task">Task</option><option value="reminder">Reminder</option></select><button class="p" id="at">Add</button></div>'
+ var lv=leaveOn(sel);if(lv)h+='<div class="it"><span>🏖 '+esc(lvName(lv))+'</span><button data-dl="'+lv.id+'">✕</button></div>';
+ it.forEach(function(x){var dn=isDone(x,sel);h+='<div class="it"><input type="checkbox" data-tg="'+x.id+'"'+(dn?' checked':'')+'><span class="'+(dn?'x':'')+'">'+(x.kind==="reminder"?'⏰ ':'')+(x.yearly?'🔁 ':'')+esc(x.title)+'</span><button data-di="'+x.id+'">✕</button></div>'});
+ if(!hs.length&&!it.length&&!lv)h+='<div class="mut">Nothing on this day.</div>';
+ h+='<div class="r"><input type="text" id="nt" placeholder="New task / reminder"><select id="nk"><option value="task">Task</option><option value="reminder">Reminder</option></select></div><div class="r"><label class="mut"><input type="checkbox" id="ny"> repeat every year</label><button class="p" id="at">Add</button></div>'
+ +'<div class="r"><select id="lt"><option>Casual</option><option>Earned</option><option>Medical</option><option>Other</option></select><button id="al">Mark leave</button></div><div class="r"><input type="text" id="ld" class="hid" placeholder="Describe the leave"></div>'
  +'<div class="r"><input type="text" id="hn" placeholder="Holiday name"><label class="mut"><input type="checkbox" id="hy"> yearly</label><button id="ah">Mark holiday</button></div>';
  document.getElementById("day").innerHTML=h}
 function renderSet(){var h='<h3>Due-date colour alerts</h3><div class="mut">When a task’s due date is within N days, its date cell changes to your colour.</div>';
@@ -99,8 +107,10 @@ document.addEventListener("click",function(e){var t=e.target,a=t.dataset||{},I=t
  else if(I==="nx"){if(++vm>11){vm=0;vy++}render()}
  else if(I==="td"){vy=now.getFullYear();vm=now.getMonth();sel=k(now);render()}
  else if(I==="st"){var s=document.getElementById("set");renderSet();s.classList.toggle("hid")}
- else if(I==="at"){var v=document.getElementById("nt").value.trim();if(v){S.items.push({id:id(),date:sel,title:v,kind:document.getElementById("nk").value,done:false});save();render()}}
+ else if(I==="at"){var v=document.getElementById("nt").value.trim();if(v){S.items.push({id:id(),date:sel,title:v,kind:document.getElementById("nk").value,done:false,yearly:document.getElementById("ny").checked});save();render()}}
  else if(I==="ah"){var n=document.getElementById("hn").value.trim()||"Holiday";S.hol.push({id:id(),date:sel,name:n,yearly:document.getElementById("hy").checked});save();render()}
+ else if(I==="al"){var ty=document.getElementById("lt").value,ds=document.getElementById("ld").value.trim();S.leaves=S.leaves.filter(function(l){return l.date!==sel});S.leaves.push({id:id(),date:sel,type:ty,desc:ty==="Other"?(ds||"Other"):""});save();render()}
+ else if(a.dl){S.leaves=S.leaves.filter(function(l){return l.id!==a.dl});save();render()}
  else if(a.hd){S.hol=S.hol.filter(function(x){return x.id!==a.hd});save();render()}
  else if(a.di){S.items=S.items.filter(function(x){return x.id!==a.di});save();render()}
  else if(a.rx!==undefined){S.rules.splice(+a.rx,1);save();renderSet();render()}
@@ -109,7 +119,8 @@ document.addEventListener("click",function(e){var t=e.target,a=t.dataset||{},I=t
  else if(I==="im"){var b2=document.getElementById("bk");if(b2.classList.contains("hid")||!b2.value){b2.classList.remove("hid");b2.value="";b2.placeholder="Paste backup here, then tap Import again"}else{try{var o=JSON.parse(b2.value);if(o.items&&o.hol&&o.rules){S=o;save();render();renderSet()}}catch(x){b2.value="Invalid backup"}}}
 });
 document.addEventListener("change",function(e){var t=e.target,a=t.dataset||{};
- if(a.tg){S.items.forEach(function(x){if(x.id===a.tg)x.done=t.checked});save();render()}
+ if(a.tg){S.items.forEach(function(x){if(x.id===a.tg){if(x.yearly){x.dn=x.dn||{};if(t.checked)x.dn[sel]=1;else delete x.dn[sel]}else x.done=t.checked}});save();render()}
+ else if(t.id==="lt"){document.getElementById("ld").classList.toggle("hid",t.value!=="Other")}
  else if(a.rd!==undefined){S.rules[+a.rd].days=Math.max(0,+t.value||0);save();render()}
  else if(a.rc!==undefined){S.rules[+a.rc].color=t.value;save();render()}
  else if(a.wk!==undefined){var i=+a.wk,j=S.wk.indexOf(i);if(t.checked&&j<0)S.wk.push(i);if(!t.checked&&j>-1)S.wk.splice(j,1);save();render()}
